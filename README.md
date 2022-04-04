@@ -46,7 +46,7 @@ const LANGS = {
 export { CONFIG, LANGS };
 ```
 
-**Please note: ** this lib is strongly WIP, having "no languages" is currently not supported.
+**Please note:** this lib is strongly WIP, having "no languages" is currently not supported.
 
 ## Example page
 
@@ -80,4 +80,4 @@ Advanced features are OSP, meaning: plug-in system WIP, meanwhile fork the proje
 
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-**Tests are more than welcome**
+**Tests are more than welcome.**
