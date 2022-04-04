@@ -62,7 +62,7 @@ const Index = (langCode) => /*jsx*/ `
 `;
 
 export const LocalConfig = {
-  title: "Trafile Niccolai",
+  title: "My Page Title...",
 };
 
 export default Index;
