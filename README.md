@@ -36,17 +36,17 @@ const CONFIG = {
 
 const LANGS = {
   it: {
-    hello: "Ciao, mondo!",
     test: "Test IT",
   },
   en: {
     test: "Test EN",
-    hello: "Hello, world!",
   },
 };
 
 export { CONFIG, LANGS };
 ```
+
+**Please note: ** this lib is strongly WIP, having "no languages" is currently not supported.
 
 ## Example page
 

@@ -53,8 +53,6 @@ async function buildSite(currentDirectory = "") {
       "pages" + (currentDirectory != "" ? currentDirectory : "")
     );
 
-    console.log("Pages path: " + sourcePath);
-
     const list = await readDirectory(sourcePath);
 
     // Separate files and directories
@@ -66,8 +64,6 @@ async function buildSite(currentDirectory = "") {
 
       (dirItem.includes(".js") ? files : subDirectories).push(dirItem);
     }
-
-    console.log(files, subDirectories);
 
     const tasks = flattenArray(
       files.map(async function (fileName) {
