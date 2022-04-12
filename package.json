@@ -1,6 +1,6 @@
 {
   "name": "@millino/naked-ssg",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Super-minimal, no deps NodeJS static site generator with i18n support.",
   "main": "index.js",
   "type": "module",
@@ -8,7 +8,7 @@
     "naked-ssg" : "index.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: Too many things in life\" && exit 1"
   },
   "keywords": [
     "ssg"
