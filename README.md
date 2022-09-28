@@ -13,7 +13,7 @@ Initialize a project:
 ```bash
 mkdir project-name
 cd project-name
-npx naked-ssg initialize
+npx @millino/naked-ssg initialize
 ```
 
 Some files need to be created manually, see the sections below.
@@ -21,7 +21,7 @@ Some files need to be created manually, see the sections below.
 To build the project:
 
 ```bash
-npx naked-ssg build
+npx @millino/naked-ssg build
 ```
 
 **todo**:
