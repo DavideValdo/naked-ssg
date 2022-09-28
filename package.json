@@ -1,0 +1,28 @@
+{
+  "name": "@millino/naked-ssg",
+  "version": "0.1.4",
+  "description": "Super-minimal, (almost) no deps NodeJS static site generator with i18n support.",
+  "main": "index.js",
+  "type": "module",
+  "private": false,
+  "module": "dist/index.js",
+  "declarationDir": "types",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "bin": {
+    "naked-ssg": "./dist/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: Too many things in life\" && exit 1"
+  },
+  "keywords": [
+    "ssg"
+  ],
+  "author": "Davide Valdo Biagini",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.7.23"
+  }
+}
