@@ -1,19 +1,33 @@
-# Why
+# Yet another TypeScript SSG
 
-No need for bloated code for simple tasks. We need to learn to reduce over-engineering and to keep our toolchains slim.
+But with built-in i18n support and a minimal API.
 
-## Installation
+## Why
 
-```bash
-npm i -g @millino/naked-ssg
-```
+No need for bloated code for simple tasks. We need to reduce over-engineering and keep our toolchains slim.
 
 ## Usage
 
-Go to the project directory and run:
+Initialize a project:
 
 ```bash
-naked-ssg build
+mkdir project-name
+cd project-name
+npx naked-ssg initialize
+```
+
+Some files need to be created manually, see the sections below.
+
+To build the project:
+
+```bash
+npx naked-ssg build
+```
+
+**todo**:
+
+```bash
+npx naked-ssg server
 ```
 
 ## Project structure
@@ -29,15 +43,17 @@ naked-ssg build
 
 ## Example config.js
 
-```js
-const CONFIG = {
+```ts
+import { SiteConfiguration, TranslationsMap } from "@millino/naked-ssg";
+
+const CONFIG: SiteConfiguration = {
   cultures: ["it", "en"], // "it" is the default culture,
 
   // @todo:
   defaultCultureDirectoryBuildBehavior: "both", // Builds pages for both / and /it
 };
 
-const TRANSLATIONS = {
+const TRANSLATIONS: TranslationsMap = {
   it: {
     test: "Test IT",
   },
@@ -75,49 +91,6 @@ The comment below is used to trigger the `es6-string-jsx` VSCode plugin function
 /*jsx*/
 ```
 
-## Custom helpers
-
-Every page is just a JavaScript file, which means that you can make your own custom helpers. Here's an example of how to implement a generic HTML "Layout" by using functional composition.
-
-**layout/layout.js**
-
-```js
-const Layout = (HTMLContent, localConfig, cultureCode) => /*jsx*/ `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>${localConfig.title || "Default title"}</title>
-</head>
-<body>
-  ${HTMLContent(cultureCode)}
-</body>
-</html>
-`;
-
-export default Layout;
-```
-
-**pages/hello.js**
-
-```js
-import { TRANSLATIONS } from "../config.js";
-import Layout from "../layout/layout.js";
-
-export const localConfig = {
-  title: "Custom Title", // Add whatever you need to this object
-};
-
-const HTMLContent = (cultureCode) => /*jsx*/ `
-<p>
-    ${TRANSLATIONS[cultureCode].hello}
-</p>
-`;
-
-const Index = (cultureCode) => Layout(HTMLContent, localConfig, cultureCode);
-
-export default Index;
-```
-
 ## Page-level configuration
 
 Certain specific behaviors are obtainable by exporting a `localConfig` constant. **See the available configuration options in the example below:**
@@ -132,6 +105,7 @@ const Index = (cultureCode) => /*jsx*/ `
 `;
 
 export const localConfig = {
+  title: "Title", // The title tag
   skipForCultures: ["it"], // The current page won't be built for the "it" culture,
 };
 
