@@ -1,9 +1,7 @@
-import { PageConfiguration } from "../types/PageConfiguration";
-
-type HTMLMaker = (cultureCode: string) => string;
+import { PageConfiguration } from "@millino/types-naked-ssg"
 
 const Layout = (
-  makeHTML: HTMLMaker,
+  html: string,
   localConfig: PageConfiguration,
   cultureCode: string
 ) => /*jsx*/ `
@@ -13,9 +11,9 @@ const Layout = (
   <title>${localConfig.title || "Default title"}</title>
 </head>
 <body>
-  ${makeHTML(cultureCode)}
+  ${html}
 </body>
 </html>
-`;
+`
 
-export default Layout;
+export default Layout

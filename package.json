@@ -1,6 +1,6 @@
 {
   "name": "@millino/naked-ssg",
-  "version": "0.0.1",
+  "version": "0.0.5",
   "description": "Super-minimal, (almost) no deps NodeJS static site generator with i18n support.",
   "main": "index.js",
   "type": "module",
@@ -23,6 +23,8 @@
   "author": "Davide Valdo Biagini",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^18.7.23"
+    "@millino/types-naked-ssg": "^0.0.16",
+    "@types/node": "^18.7.23",
+    "prettier": "2.8.8"
   }
 }

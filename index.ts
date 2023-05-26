@@ -1,182 +1,246 @@
 #!/usr/bin/env node
-import { readdir as readDirectory, writeFile } from "fs/promises";
-import { existsSync, mkdirSync } from "fs";
-import { join } from "path";
-import { cwd } from "process";
-import { exec } from "child_process";
+import { readdir as readDirectory, writeFile } from "fs/promises"
+import { existsSync, mkdirSync } from "fs"
+import { join } from "path"
+import { cwd } from "process"
+import { exec } from "child_process"
+import {
+  ProxyConfiguration,
+  SiteConfiguration,
+  SlugRecord,
+  PageBuilder,
+} from "@millino/types-naked-ssg"
 
-import Layout from "./layout/index.js";
-import { TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js";
+import Layout from "./layout/index.js"
+import { PROXIES_FOLDER, TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js"
 
-import { SiteConfiguration } from "./types/SiteConfiguration";
-import { PageConfiguration } from "./types/PageConfiguration";
-import { TranslationsMap } from "./types/TranslationsMap";
-
-function getPath(path: string) {
-  return join(cwd(), TYPESCRIPT_BUILD_FOLDER_NAME, path);
+function getPath(paths: string[]) {
+  return join(cwd(), TYPESCRIPT_BUILD_FOLDER_NAME, ...paths)
 }
 
 function flattenArray<T>(array: Array<T>): Array<T> {
   return array.reduce((accumulator: Array<T>, value: T | Array<T>) => {
-    return Array.isArray(value) ? flattenArray(value) : [...accumulator, value];
-  }, []);
+    return Array.isArray(value) ? flattenArray(value) : [...accumulator, value]
+  }, [])
 }
 
-type FileBuilderSignature = {
-  cultureCode: string;
-  isDefaultCulture?: boolean;
-};
+type FileBuilderFactorySignature = {
+  sourcePath: string
+  templateName: string
+  currentDirectory: string
+}
 
-async function makeFileBuilder(
-  sourcePath: string,
-  fileName: string,
-  currentDirectory = ""
-) {
-  const { default: fileContent } = await import(join(sourcePath, fileName));
+type FileBuilderSignature<T> = {
+  cultureCode: string
+  isDefaultCulture?: boolean
+  slugRecord?: SlugRecord<T>
+}
 
-  const { default: makeHTML, localConfig } = fileContent;
+async function readTemplate(sourcePath: string, fileName: string) {
+  const { Page } = await import(join(sourcePath, fileName))
 
-  console.log("==", makeHTML, localConfig);
+  return Page as PageBuilder<unknown>
+}
+
+async function makeFileBuilder({
+  sourcePath,
+  templateName,
+  currentDirectory = "",
+}: FileBuilderFactorySignature) {
+  const Page = await readTemplate(sourcePath, templateName)
 
   return async function ({
-    cultureCode,
     isDefaultCulture = false,
-  }: FileBuilderSignature) {
-    // Skip a culture, if specified
-    if (localConfig?.skipForCultures?.includes(cultureCode)) return false;
+    slugRecord,
+    cultureCode,
+  }: FileBuilderSignature<unknown>) {
+    const { config, html } = Page(cultureCode)
 
-    const markup = Layout(makeHTML, localConfig, cultureCode).replace(
+    const destinationFileName = slugRecord
+      ? slugRecord.slug + ".html"
+      : templateName.replace(".js", ".html")
+    // Skip a culture, if specified
+    if (config?.skipForCultures?.includes(cultureCode)) return false
+
+    const HTMLString = await (slugRecord ? html(slugRecord) : html())
+
+    const markup = Layout(HTMLString, config, cultureCode).replace(
       /^\s+|\s+$/g,
       ""
-    );
+    )
 
-    const buildPath = join(
-      cwd(),
-      "build",
+    const buildPath = getPath([
       isDefaultCulture ? "" : cultureCode,
-      currentDirectory
-    );
+      currentDirectory,
+    ])
 
-    const destinationFilePath = join(
-      buildPath,
-      fileName.replace(".js", ".html")
-    );
+    const destinationFilePath = join(buildPath, destinationFileName)
 
     try {
       if (!existsSync(buildPath)) {
-        mkdirSync(buildPath, { recursive: true });
+        mkdirSync(buildPath, { recursive: true })
       }
 
-      await writeFile(destinationFilePath, markup);
+      await writeFile(destinationFilePath, markup)
 
-      return false;
+      console.log("[naked] Building", destinationFileName, config)
+
+      return false
     } catch (error) {
       if (error) {
         console.error(
-          "Unable to build " +
+          "[naked] Unable to build " +
             destinationFilePath +
             ", there was an error: " +
             error
-        );
+        )
       }
 
-      return true;
+      return true
     }
-  };
+  }
 }
 
-async function buildSite(currentDirectory = "") {
-  try {
-    const { CONFIG }: { CONFIG: SiteConfiguration } = await import(
-      getPath("config.js")
-    );
+async function buildSite() {
+  const {
+    Config,
+  }: {
+    Config: SiteConfiguration
+  } = await import(getPath(["config.js"]))
 
-    const sourcePath = getPath(
-      join("pages", currentDirectory != "" ? currentDirectory : "")
-    );
+  const buildProxyPages = async () => {
+    const config = await Config.proxies
 
-    const list = await readDirectory(sourcePath);
+    if (!config) return
+
+    const tasks = []
+
+    for (const proxyEntry of config) {
+      const { fetchData, templateName } = proxyEntry
+
+      const data = await fetchData()
+
+      for (const [
+        cultureCode,
+        { data: cultureSpecificData, directory },
+      ] of Object.entries(data)) {
+        const buildFile = await makeFileBuilder({
+          sourcePath: getPath([PROXIES_FOLDER]),
+          templateName: templateName + ".js",
+          currentDirectory: directory,
+        })
+
+        tasks.push(
+          cultureSpecificData.map((slugRecord) =>
+            buildFile({
+              cultureCode,
+              isDefaultCulture: cultureCode == Config.cultures[0],
+              slugRecord,
+            })
+          )
+        )
+      }
+    }
+
+    await Promise.all(flattenArray(tasks))
+  }
+
+  const buildPages = async (currentDirectory = "") => {
+    const sourcePath = getPath([
+      "pages",
+      currentDirectory != "" ? currentDirectory : "",
+    ])
+
+    const list = await readDirectory(sourcePath, {
+      withFileTypes: true,
+      encoding: "utf8",
+    })
 
     // Separate files and directories
     const files: string[] = [],
-      subDirectories: string[] = [];
+      subDirectories: string[] = []
 
     for (const dirItem of list) {
-      if (dirItem[0] == ".") continue; // Ignore hidden files
+      const name = dirItem.name
 
-      (dirItem.includes(".js") ? files : subDirectories).push(dirItem);
+      if (name == ".") continue // Ignore hidden files
+
+      if (dirItem.isDirectory()) {
+        subDirectories.push(name)
+      }
+
+      if (dirItem.isFile()) files.push(name)
     }
 
     const tasks = flattenArray(
-      files.map(async function (fileName) {
-        const pipeline: Array<Promise<boolean>> = [];
+      files.map(async function (templateName) {
+        const pipeline: Array<Promise<boolean>> = []
 
-        const buildFile = await makeFileBuilder(
+        const buildFile = await makeFileBuilder({
           sourcePath,
-          fileName,
-          currentDirectory
-        );
+          templateName,
+          currentDirectory,
+        })
 
         // The "default culture" has no dedicated subdirectory, by default
         // @todo: Add global config flag to force a dedicated subdirectory
         pipeline.push(
           buildFile({
-            cultureCode: CONFIG.cultures[0],
+            cultureCode: Config.cultures[0],
             isDefaultCulture: true,
           })
-        );
+        )
 
         // Also make promises for the remaining cultures
-        for (let i = 1; i < CONFIG.cultures.length; i++) {
-          pipeline.push(buildFile({ cultureCode: CONFIG.cultures[i] }));
+        for (let i = 1; i < Config.cultures.length; i++) {
+          pipeline.push(buildFile({ cultureCode: Config.cultures[i] }))
         }
 
-        return pipeline;
+        return pipeline
       })
-    );
+    )
 
     console.log(
-      "Building " + (currentDirectory == "" ? "/" : currentDirectory)
-    );
+      "[naked] Building " + (currentDirectory == "" ? "/" : currentDirectory)
+    )
 
-    await Promise.all(tasks);
+    await Promise.all(tasks)
 
     for (const directory of subDirectories) {
-      await buildSite(join(currentDirectory, directory));
+      await buildPages(join(currentDirectory, directory))
     }
-  } catch (error) {
-    console.error("Unable to scan directory: " + error);
   }
+
+  buildProxyPages()
+  buildPages()
 }
 
-(async () => {
+;(async () => {
   const TASKS: Record<string, () => void> = {
     build: () => {
       exec("npx tsc", (error, stdout, stderr) => {
         if (error) {
           console.error(
-            "There was a TypeScript error building your project.",
+            "[naked] There was a TypeScript error building your project.",
             error
-          );
-          return;
+          )
+          return
         }
 
-        buildSite();
-      });
+        buildSite()
+      })
     },
     initialize: () => {
       exec(
         `npm init -y && npm i --save-dev typescript && npx tsc --init --outDir ./${TYPESCRIPT_BUILD_FOLDER_NAME}`,
         (error, stdout, stderr) => {
           if (error) {
-            console.error(error);
-          } else console.log(stdout);
+            console.error(error)
+          } else console.log(stdout)
         }
-      );
+      )
     },
-  };
+  }
 
-  if (process.argv[2] in TASKS) TASKS[process.argv[2]]();
-})();
-
-export { SiteConfiguration, PageConfiguration, TranslationsMap };
+  if (process.argv[2] in TASKS) TASKS[process.argv[2]]()
+})()
