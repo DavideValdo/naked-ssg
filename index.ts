@@ -5,13 +5,12 @@ import { join } from "path"
 import { cwd } from "process"
 import { exec } from "child_process"
 import {
-  ProxyConfiguration,
   SiteConfiguration,
   SlugRecord,
   PageBuilder,
+  LayoutFunction,
 } from "@millino/types-naked-ssg"
 
-import Layout from "./layout/index.js"
 import { PROXIES_FOLDER, TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js"
 
 function getPath(paths: string[]) {
@@ -28,6 +27,7 @@ type FileBuilderFactorySignature = {
   sourcePath: string
   templateName: string
   currentDirectory: string
+  layout: LayoutFunction
 }
 
 type FileBuilderSignature<T> = {
@@ -42,10 +42,31 @@ async function readTemplate(sourcePath: string, fileName: string) {
   return Page as PageBuilder<unknown>
 }
 
+async function readConfig() {
+  try {
+    const { Config } = await import(getPath(["config.js"]))
+    return Config as SiteConfiguration
+  } catch (e) {
+    console.error("[naked] Can't read config")
+    return false
+  }
+}
+
+async function readLayout() {
+  try {
+    const { Layout } = await import(getPath(["layout.js"]))
+    return Layout as LayoutFunction
+  } catch (e) {
+    console.error("[naked] Can't read layout")
+    return false
+  }
+}
+
 async function makeFileBuilder({
   sourcePath,
   templateName,
   currentDirectory = "",
+  layout,
 }: FileBuilderFactorySignature) {
   const Page = await readTemplate(sourcePath, templateName)
 
@@ -54,7 +75,9 @@ async function makeFileBuilder({
     slugRecord,
     cultureCode,
   }: FileBuilderSignature<unknown>) {
-    const { config, html } = Page(cultureCode)
+    const { getConfig, getHTML } = Page(cultureCode)
+
+    const config = await (slugRecord ? getConfig(slugRecord) : getConfig())
 
     const destinationFileName = slugRecord
       ? slugRecord.slug + ".html"
@@ -62,17 +85,19 @@ async function makeFileBuilder({
     // Skip a culture, if specified
     if (config?.skipForCultures?.includes(cultureCode)) return false
 
-    const HTMLString = await (slugRecord ? html(slugRecord) : html())
+    const HTMLString = await (slugRecord ? getHTML(slugRecord) : getHTML())
 
-    const markup = Layout(HTMLString, config, cultureCode).replace(
+    const markup = layout({ html: HTMLString, config, cultureCode }).replace(
       /^\s+|\s+$/g,
       ""
     )
 
-    const buildPath = getPath([
-      isDefaultCulture ? "" : cultureCode,
-      currentDirectory,
-    ])
+    const buildPath = join(
+      cwd(),
+      "build",
+      isDefaultCulture ? "" : cultureCode.toLowerCase(),
+      currentDirectory
+    )
 
     const destinationFilePath = join(buildPath, destinationFileName)
 
@@ -102,11 +127,12 @@ async function makeFileBuilder({
 }
 
 async function buildSite() {
-  const {
-    Config,
-  }: {
-    Config: SiteConfiguration
-  } = await import(getPath(["config.js"]))
+  const [Config, Layout] = await Promise.all([readConfig(), readLayout()])
+
+  if (!(Config && Layout)) {
+    console.error("[naked] Please check your config.ts and layout.ts files")
+    return
+  }
 
   const buildProxyPages = async () => {
     const config = await Config.proxies
@@ -125,6 +151,7 @@ async function buildSite() {
         { data: cultureSpecificData, directory },
       ] of Object.entries(data)) {
         const buildFile = await makeFileBuilder({
+          layout: Layout,
           sourcePath: getPath([PROXIES_FOLDER]),
           templateName: templateName + ".js",
           currentDirectory: directory,
@@ -177,6 +204,7 @@ async function buildSite() {
         const pipeline: Array<Promise<boolean>> = []
 
         const buildFile = await makeFileBuilder({
+          layout: Layout,
           sourcePath,
           templateName,
           currentDirectory,
