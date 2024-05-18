@@ -1,6 +1,6 @@
 {
   "name": "@millino/naked-ssg",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Super-minimal, (almost) no deps NodeJS static site generator with i18n support.",
   "main": "index.js",
   "type": "module",

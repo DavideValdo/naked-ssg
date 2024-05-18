@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { readdir as readDirectory, writeFile } from "fs/promises";
+import { cp, readdir as readDirectory, writeFile } from "fs/promises";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { cwd } from "process";
@@ -122,6 +122,18 @@ function buildSite() {
             }
             yield Promise.all(flattenArray(tasks));
         });
+        const copyResources = () => __awaiter(this, void 0, void 0, function* () {
+            const dirs = ["assets", "scripts", "graphics"];
+            console.log("[naked] Copying resources");
+            try {
+                yield Promise.all(dirs.map((dir) => cp(getPath(["..", dir]), getPath(["..", "build", dir]), {
+                    recursive: true,
+                })));
+            }
+            catch (e) {
+                console.error("== Couldn't copy resources", e);
+            }
+        });
         const buildPages = (currentDirectory = "") => __awaiter(this, void 0, void 0, function* () {
             const sourcePath = getPath([
                 "pages",
@@ -173,6 +185,7 @@ function buildSite() {
         });
         buildProxyPages();
         buildPages();
+        copyResources();
     });
 }
 ;

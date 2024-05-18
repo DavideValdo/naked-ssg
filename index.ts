@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdir as readDirectory, writeFile } from "fs/promises"
+import { cp, readdir as readDirectory, writeFile } from "fs/promises"
 import { existsSync, mkdirSync } from "fs"
 import { join } from "path"
 import { cwd } from "process"
@@ -172,6 +172,22 @@ async function buildSite() {
     await Promise.all(flattenArray(tasks))
   }
 
+  const copyResources = async () => {
+    const dirs = ["assets", "scripts", "graphics"]
+    console.log("[naked] Copying resources")
+    try {
+      await Promise.all(
+        dirs.map((dir) =>
+          cp(getPath(["..", dir]), getPath(["..", "build", dir]), {
+            recursive: true,
+          })
+        )
+      )
+    } catch (e) {
+      console.error("== Couldn't copy resources", e)
+    }
+  }
+
   const buildPages = async (currentDirectory = "") => {
     const sourcePath = getPath([
       "pages",
@@ -241,6 +257,7 @@ async function buildSite() {
 
   buildProxyPages()
   buildPages()
+  copyResources()
 }
 
 ;(async () => {
