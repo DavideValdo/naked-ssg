@@ -8,11 +8,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+import { exec } from "child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { cp, readdir as readDirectory, writeFile } from "fs/promises";
-import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { cwd } from "process";
-import { exec } from "child_process";
 import { PROXIES_FOLDER, TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js";
 function getPath(paths) {
     return join(cwd(), TYPESCRIPT_BUILD_FOLDER_NAME, ...paths);
@@ -43,7 +43,7 @@ function readConfig() {
 function readLayout() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const { Layout } = yield import(getPath(["layout.js"]));
+            const { Layout } = yield import(getPath(["layout.jsx"]));
             return Layout;
         }
         catch (e) {
@@ -62,12 +62,12 @@ function makeFileBuilder({ sourcePath, templateName, currentDirectory = "", layo
                 const config = yield (slugRecord ? getConfig(slugRecord) : getConfig());
                 const destinationFileName = slugRecord
                     ? slugRecord.slug + ".html"
-                    : templateName.replace(".js", ".html");
+                    : templateName.replace(".jsx", ".html");
                 // Skip a culture, if specified
                 if ((_a = config === null || config === void 0 ? void 0 : config.skipForCultures) === null || _a === void 0 ? void 0 : _a.includes(cultureCode))
                     return false;
                 const HTMLString = yield (slugRecord ? getHTML(slugRecord) : getHTML());
-                const markup = layout({ html: HTMLString, config, cultureCode }).replace(/^\s+|\s+$/g, "");
+                const markup = (yield layout({ html: HTMLString, config, cultureCode })).replace(/^\s+|\s+$/g, "");
                 const buildPath = join(cwd(), "build", isDefaultCulture ? "" : cultureCode.toLowerCase(), currentDirectory);
                 const destinationFilePath = join(buildPath, destinationFileName);
                 try {
@@ -95,7 +95,7 @@ function buildSite() {
     return __awaiter(this, void 0, void 0, function* () {
         const [Config, Layout] = yield Promise.all([readConfig(), readLayout()]);
         if (!(Config && Layout)) {
-            console.error("[naked] Please check your config.ts and layout.ts files");
+            console.error("[naked] Please check your config.ts and layout.tsx files");
             return;
         }
         const buildProxyPages = () => __awaiter(this, void 0, void 0, function* () {
@@ -110,7 +110,7 @@ function buildSite() {
                     const buildFile = yield makeFileBuilder({
                         layout: Layout,
                         sourcePath: getPath([PROXIES_FOLDER]),
-                        templateName: templateName + ".js",
+                        templateName: templateName + ".jsx",
                         currentDirectory: directory,
                     });
                     tasks.push(cultureSpecificData.map((slugRecord) => buildFile({
@@ -131,7 +131,7 @@ function buildSite() {
                 })));
             }
             catch (e) {
-                console.error("== Couldn't copy resources", e);
+                console.error("[naked] Couldn't copy resources", e);
             }
         });
         const buildPages = (currentDirectory = "") => __awaiter(this, void 0, void 0, function* () {
@@ -201,12 +201,24 @@ function buildSite() {
             });
         },
         initialize: () => {
-            exec(`npm init -y && npm i --save-dev typescript && npx tsc --init --outDir ./${TYPESCRIPT_BUILD_FOLDER_NAME}`, (error, stdout, stderr) => {
+            exec(`npm init -y && npm i --save-dev typescript @kitajs/html @kitajs/ts-html-plugin @millino/types-naked-ssg && npx tsc --init --outDir ./${TYPESCRIPT_BUILD_FOLDER_NAME}`, (error, stdout, stderr) => {
                 if (error) {
-                    console.error(error);
+                    console.error("[naked] There was an error initializing your project.", error);
+                    return;
                 }
-                else
-                    console.log(stdout);
+                console.log(stdout);
+                try {
+                    const TSConfigPath = join(cwd(), "tsconfig.json");
+                    const TSConfigFile = readFileSync(TSConfigPath, "utf8");
+                    const updatedTSConfig = TSConfigFile.replace(/"compilerOptions":\s*\{/, `"compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@kitajs/html",
+    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],`);
+                    writeFileSync(TSConfigPath, updatedTSConfig);
+                }
+                catch (e) {
+                    console.error("[naked] Error updating tsconfig.json", e);
+                }
             });
         },
     };

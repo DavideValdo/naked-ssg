@@ -1,10 +1,10 @@
 # Yet another TypeScript SSG
 
-But with built-in i18n support and a minimal API.
+But with built-in internationalization support and a minimal API, relies on `@kitajs/html` and `@kitajs/ts-html-plugin` to make TSX available.
 
 ## Why
 
-No need for bloated code for simple tasks. We need to reduce over-engineering and keep our toolchains slim.
+Internationalization is a common requirement, but existing tools (e.g. NextJS) feels like overkill for the purpose of obtaining a static website. I wanted the possibility to use TSX with a NodeJS static site generator, but without React involved.
 
 ## Usage
 
@@ -16,7 +16,7 @@ cd project-name
 npx @millino/naked-ssg initialize
 ```
 
-Some files need to be created manually, see the sections below.
+`config.ts` and `layout.tsx` need to be created manually, see the sections below.
 
 To build the project:
 
@@ -34,30 +34,48 @@ npx naked-ssg server
 
 ```
 /
- - config.js
+ - layout.tsx
+ - config.ts
  - /pages
-   - index.js
+   - index.tsx
    - /test-sub-directory
-     - index.js
+     - index.tsx
+- /assets
+- /scripts
+- /graphics
 ```
 
-## Example config.js
+## Example layout.tsx
+
+```tsx
+import { LayoutFunction } from "@millino/types-naked-ssg";
+
+const Layout: LayoutFunction = async ({ html, config, cultureCode }) => (
+  <html>
+    <head>
+      <title>{config.title}</title>
+    </head>
+    <body>{html}</body>
+  </html>
+);
+
+export default Layout;
+```
+
+## Example config.ts
 
 ```ts
 import { SiteConfiguration, TranslationsMap } from "@millino/naked-ssg";
 
 const CONFIG: SiteConfiguration = {
-  cultures: ["it", "en"], // "it" is the default culture,
-
-  // @todo:
-  defaultCultureDirectoryBuildBehavior: "both", // Builds pages for both / and /it
+  cultures: ["it-IT", "en-EN"], // "it-IT" is the default culture,
 };
 
 const TRANSLATIONS: TranslationsMap = {
-  it: {
+  "it-IT": {
     test: "Test IT",
   },
-  en: {
+  "en-EN": {
     test: "Test EN",
   },
 };
@@ -71,46 +89,72 @@ export { CONFIG, TRANSLATIONS };
 
 A page must have a default export, which is a function returning a string with the page markup.
 
-**/pages/index.js**
+**/pages/index.tsx**
 
-```js
-import { TRANSLATIONS } from "../config.js";
+```tsx
+import { TRANSLATIONS } from "../config.ts";
 
-const Index = (cultureCode) => /*jsx*/ `
-<p>
-    ${TRANSLATIONS[cultureCode].test}! ${2 + 2}
-</p>
-`;
+const Index = (cultureCode: string) => (
+  <p>
+    {TRANSLATIONS[cultureCode].test}! {2 + 2}
+  </p>
+);
 
 export default Index;
-```
-
-The comment below is used to trigger the `es6-string-jsx` VSCode plugin functionality, which provides JSX-like syntax highlighting within the function body.
-
-```js
-/*jsx*/
 ```
 
 ## Page-level configuration
 
 Certain specific behaviors are obtainable by exporting a `localConfig` constant. **See the available configuration options in the example below:**
 
-```js
-import { TRANSLATIONS } from "../../config.js";
+```tsx
+import type { PageBuilder } from '@millino/types-naked-ssg';
+import { TRANSLATIONS } from '../config.js';
 
-const Index = (cultureCode) => /*jsx*/ `
-<p>
-    ${TRANSLATIONS[cultureCode].test}! ${2 + 2}
-</p>
-`;
-
-export const localConfig = {
-  title: "Title", // The title tag
-  skipForCultures: ["it"], // The current page won't be built for the "it" culture,
-};
+const Index: PageBuilder = cultureCode => ({
+	getHTML: async () => (
+        <p>
+            ${TRANSLATIONS[cultureCode]!.test}! ${2 + 2}
+        </p>
+    ),
+    getConfig: async () => ({
+        title: 'Home',
+        description: 'Homepage example.',
+    })
+});
 
 export default Index;
+
 ```
+
+## Proxies
+"Proxies" is a mechanism to output pages from sets of external data. 
+
+
+```ts
+const CONFIG: SiteConfiguration = {
+  ...,
+  proxies: [
+    {
+      fetchData: async () => {
+        return {
+          "it-IT": {
+            data: await fancyAPI({culture: "it-IT"}),
+            directory: "test-it-IT",
+          },
+          "en-EN": {
+            data: await fancyAPI({culture: "en-EN"}),
+            directory: "test-en-EN",
+          },
+        }
+      },
+      templateName: "test-proxy",
+    },
+  ],
+};
+```
+
+This configuration will try to read a `/proxies/test-proxy.tsx` file, and output pages for each culture in the `it-IT` and `en-EN` directories.
 
 ## Plug-ins
 

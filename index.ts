@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-import { cp, readdir as readDirectory, writeFile } from "fs/promises"
-import { existsSync, mkdirSync } from "fs"
-import { join } from "path"
-import { cwd } from "process"
-import { exec } from "child_process"
 import {
+  LayoutFunction,
+  PageBuilder,
   SiteConfiguration,
   SlugRecord,
-  PageBuilder,
-  LayoutFunction,
 } from "@millino/types-naked-ssg"
+import { exec } from "child_process"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { cp, readdir as readDirectory, writeFile } from "fs/promises"
+import { join } from "path"
+import { cwd } from "process"
 
 import { PROXIES_FOLDER, TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js"
 
@@ -54,7 +54,7 @@ async function readConfig() {
 
 async function readLayout() {
   try {
-    const { Layout } = await import(getPath(["layout.js"]))
+    const { Layout } = await import(getPath(["layout.jsx"]))
     return Layout as LayoutFunction
   } catch (e) {
     console.error("[naked] Can't read layout")
@@ -81,16 +81,15 @@ async function makeFileBuilder({
 
     const destinationFileName = slugRecord
       ? slugRecord.slug + ".html"
-      : templateName.replace(".js", ".html")
+      : templateName.replace(".jsx", ".html")
     // Skip a culture, if specified
     if (config?.skipForCultures?.includes(cultureCode)) return false
 
     const HTMLString = await (slugRecord ? getHTML(slugRecord) : getHTML())
 
-    const markup = layout({ html: HTMLString, config, cultureCode }).replace(
-      /^\s+|\s+$/g,
-      ""
-    )
+    const markup = (
+      await layout({ html: HTMLString, config, cultureCode })
+    ).replace(/^\s+|\s+$/g, "")
 
     const buildPath = join(
       cwd(),
@@ -130,7 +129,7 @@ async function buildSite() {
   const [Config, Layout] = await Promise.all([readConfig(), readLayout()])
 
   if (!(Config && Layout)) {
-    console.error("[naked] Please check your config.ts and layout.ts files")
+    console.error("[naked] Please check your config.ts and layout.tsx files")
     return
   }
 
@@ -153,7 +152,7 @@ async function buildSite() {
         const buildFile = await makeFileBuilder({
           layout: Layout,
           sourcePath: getPath([PROXIES_FOLDER]),
-          templateName: templateName + ".js",
+          templateName: templateName + ".jsx",
           currentDirectory: directory,
         })
 
@@ -184,7 +183,7 @@ async function buildSite() {
         )
       )
     } catch (e) {
-      console.error("== Couldn't copy resources", e)
+      console.error("[naked] Couldn't copy resources", e)
     }
   }
 
@@ -277,11 +276,35 @@ async function buildSite() {
     },
     initialize: () => {
       exec(
-        `npm init -y && npm i --save-dev typescript && npx tsc --init --outDir ./${TYPESCRIPT_BUILD_FOLDER_NAME}`,
+        `npm init -y && npm i --save-dev typescript @kitajs/html @kitajs/ts-html-plugin @millino/types-naked-ssg && npx tsc --init --outDir ./${TYPESCRIPT_BUILD_FOLDER_NAME}`,
         (error, stdout, stderr) => {
           if (error) {
-            console.error(error)
-          } else console.log(stdout)
+            console.error(
+              "[naked] There was an error initializing your project.",
+              error
+            )
+
+            return
+          }
+
+          console.log(stdout)
+
+          try {
+            const TSConfigPath = join(cwd(), "tsconfig.json")
+            const TSConfigFile = readFileSync(TSConfigPath, "utf8")
+
+            const updatedTSConfig = TSConfigFile.replace(
+              /"compilerOptions":\s*\{/,
+              `"compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@kitajs/html",
+    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],`
+            )
+
+            writeFileSync(TSConfigPath, updatedTSConfig)
+          } catch (e) {
+            console.error("[naked] Error updating tsconfig.json", e)
+          }
         }
       )
     },
