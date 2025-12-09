@@ -11,10 +11,12 @@ import { cp, readdir as readDirectory, writeFile } from "fs/promises"
 import { join } from "path"
 import { cwd } from "process"
 
+import { pathToFileURL } from "url"
 import { PROXIES_FOLDER, TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js"
 
 function getPath(paths: string[]) {
-  return join(cwd(), TYPESCRIPT_BUILD_FOLDER_NAME, ...paths)
+  const fullPath = join(cwd(), TYPESCRIPT_BUILD_FOLDER_NAME, ...paths)
+  return pathToFileURL(fullPath).href
 }
 
 function flattenArray<T>(array: Array<T>): Array<T> {
@@ -25,7 +27,7 @@ function flattenArray<T>(array: Array<T>): Array<T> {
 
 type FileBuilderFactorySignature = {
   sourcePath: string
-  templateName: string
+  layoutName: string
   currentDirectory: string
   layout: LayoutFunction
 }
@@ -64,11 +66,11 @@ async function readLayout() {
 
 async function makeFileBuilder({
   sourcePath,
-  templateName,
+  layoutName,
   currentDirectory = "",
   layout,
 }: FileBuilderFactorySignature) {
-  const Page = await readTemplate(sourcePath, templateName)
+  const Page = await readTemplate(sourcePath, layoutName)
 
   return async function ({
     isDefaultCulture = false,
@@ -81,7 +83,7 @@ async function makeFileBuilder({
 
     const destinationFileName = slugRecord
       ? slugRecord.slug + ".html"
-      : templateName.replace(".js", ".html")
+      : layoutName.replace(".js", ".html")
     // Skip a culture, if specified
     if (config?.skipForCultures?.includes(cultureCode)) return false
 
@@ -141,7 +143,7 @@ async function buildSite() {
     const tasks = []
 
     for (const proxyEntry of config) {
-      const { fetchData, templateName } = proxyEntry
+      const { fetchData, layoutName } = proxyEntry
 
       const data = await fetchData()
 
@@ -152,7 +154,7 @@ async function buildSite() {
         const buildFile = await makeFileBuilder({
           layout: Layout,
           sourcePath: getPath([PROXIES_FOLDER]),
-          templateName: templateName + ".js",
+          layoutName: layoutName + ".js",
           currentDirectory: directory,
         })
 
@@ -215,13 +217,13 @@ async function buildSite() {
     }
 
     const tasks = flattenArray(
-      files.map(async function (templateName) {
+      files.map(async function (layoutName) {
         const pipeline: Array<Promise<boolean>> = []
 
         const buildFile = await makeFileBuilder({
           layout: Layout,
           sourcePath,
-          templateName,
+          layoutName,
           currentDirectory,
         })
 

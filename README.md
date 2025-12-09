@@ -1,6 +1,6 @@
 # Yet another TypeScript SSG
 
-But with built-in internationalization support and a minimal API, relies on `@kitajs/html` and `@kitajs/ts-html-plugin` to make TSX available.
+But with built-in internationalization support and a minimal API, relies on `@kitajs/html` and `@kitajs/ts-html-plugin` to make TSX available in the target projects.
 
 ## Why
 
@@ -46,6 +46,8 @@ npx naked-ssg server
 ```
 
 ## Example layout.tsx
+
+This will wrap every page, except for proxy-generated pages.
 
 ```tsx
 import { LayoutFunction } from "@millino/types-naked-ssg";
@@ -105,7 +107,7 @@ export default Index;
 
 ## Page-level configuration
 
-Certain specific behaviors are obtainable by exporting a `localConfig` constant. **See the available configuration options in the example below:**
+Certain things are overridable in the configuration by exporting a `getConfig` function. **See the available configuration options in the example below:**
 
 ```tsx
 import type { PageBuilder } from '@millino/types-naked-ssg';
@@ -128,7 +130,7 @@ export default Index;
 ```
 
 ## Proxies
-"Proxies" is a mechanism to output pages from sets of external data. 
+"Proxies" is a mechanism to output pages from sets of external data. `data` should be an array of objects with a string `slug` property: each object will generate an HTML page.
 
 
 ```ts
@@ -140,21 +142,21 @@ const CONFIG: SiteConfiguration = {
         return {
           "it-IT": {
             data: await fancyAPI({culture: "it-IT"}),
-            directory: "test-it-IT",
+            directory: "prodotti",
           },
           "en-EN": {
             data: await fancyAPI({culture: "en-EN"}),
-            directory: "test-en-EN",
+            directory: "products",
           },
         }
       },
-      templateName: "test-proxy",
+      layoutName: "products",
     },
   ],
 };
 ```
 
-This configuration will try to read a `/proxies/test-proxy.tsx` file, and output pages for each culture in the `it-IT` and `en-EN` directories.
+This configuration will try to read a `/proxies/products.tsx` file, and output pages for each culture in the `it-IT` and `en-EN` directories.
 
 ## Plug-ins
 

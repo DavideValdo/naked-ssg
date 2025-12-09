@@ -49,9 +49,11 @@ import { existsSync, mkdirSync } from "fs";
 import { cp, readdir as readDirectory, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
+import { pathToFileURL } from "url";
 import { PROXIES_FOLDER, TYPESCRIPT_BUILD_FOLDER_NAME } from "./constants.js";
 function getPath(paths) {
-    return join.apply(void 0, __spreadArray([cwd(), TYPESCRIPT_BUILD_FOLDER_NAME], paths, false));
+    var fullPath = join.apply(void 0, __spreadArray([cwd(), TYPESCRIPT_BUILD_FOLDER_NAME], paths, false));
+    return pathToFileURL(fullPath).href;
 }
 function flattenArray(array) {
     return array.reduce(function (accumulator, value) {
@@ -114,10 +116,10 @@ function readLayout() {
 function makeFileBuilder(_a) {
     return __awaiter(this, arguments, void 0, function (_b) {
         var Page;
-        var sourcePath = _b.sourcePath, templateName = _b.templateName, _c = _b.currentDirectory, currentDirectory = _c === void 0 ? "" : _c, layout = _b.layout;
+        var sourcePath = _b.sourcePath, layoutName = _b.layoutName, _c = _b.currentDirectory, currentDirectory = _c === void 0 ? "" : _c, layout = _b.layout;
         return __generator(this, function (_d) {
             switch (_d.label) {
-                case 0: return [4 /*yield*/, readTemplate(sourcePath, templateName)];
+                case 0: return [4 /*yield*/, readTemplate(sourcePath, layoutName)];
                 case 1:
                     Page = _d.sent();
                     return [2 /*return*/, function (_a) {
@@ -134,7 +136,7 @@ function makeFileBuilder(_a) {
                                             config = _f.sent();
                                             destinationFileName = slugRecord
                                                 ? slugRecord.slug + ".html"
-                                                : templateName.replace(".js", ".html");
+                                                : layoutName.replace(".js", ".html");
                                             // Skip a culture, if specified
                                             if ((_d = config === null || config === void 0 ? void 0 : config.skipForCultures) === null || _d === void 0 ? void 0 : _d.includes(cultureCode))
                                                 return [2 /*return*/, false];
@@ -189,7 +191,7 @@ function buildSite() {
                         return [2 /*return*/];
                     }
                     buildProxyPages = function () { return __awaiter(_this, void 0, void 0, function () {
-                        var config, tasks, _i, config_1, proxyEntry, fetchData, templateName, data, _loop_1, _a, _b, _c, cultureCode, _d, cultureSpecificData, directory;
+                        var config, tasks, _i, config_1, proxyEntry, fetchData, layoutName, data, _loop_1, _a, _b, _c, cultureCode, _d, cultureSpecificData, directory;
                         return __generator(this, function (_e) {
                             switch (_e.label) {
                                 case 0: return [4 /*yield*/, Config.proxies];
@@ -203,7 +205,7 @@ function buildSite() {
                                 case 2:
                                     if (!(_i < config_1.length)) return [3 /*break*/, 8];
                                     proxyEntry = config_1[_i];
-                                    fetchData = proxyEntry.fetchData, templateName = proxyEntry.templateName;
+                                    fetchData = proxyEntry.fetchData, layoutName = proxyEntry.layoutName;
                                     return [4 /*yield*/, fetchData()];
                                 case 3:
                                     data = _e.sent();
@@ -214,7 +216,7 @@ function buildSite() {
                                                 case 0: return [4 /*yield*/, makeFileBuilder({
                                                         layout: Layout,
                                                         sourcePath: getPath([PROXIES_FOLDER]),
-                                                        templateName: templateName + ".js",
+                                                        layoutName: layoutName + ".js",
                                                         currentDirectory: directory,
                                                     })];
                                                 case 1:
@@ -313,7 +315,7 @@ function buildSite() {
                                             if (dirItem.isFile())
                                                 files.push(name_1);
                                         }
-                                        tasks = flattenArray(files.map(function (templateName) {
+                                        tasks = flattenArray(files.map(function (layoutName) {
                                             return __awaiter(this, void 0, void 0, function () {
                                                 var pipeline, buildFile, i;
                                                 return __generator(this, function (_a) {
@@ -323,7 +325,7 @@ function buildSite() {
                                                             return [4 /*yield*/, makeFileBuilder({
                                                                     layout: Layout,
                                                                     sourcePath: sourcePath,
-                                                                    templateName: templateName,
+                                                                    layoutName: layoutName,
                                                                     currentDirectory: currentDirectory,
                                                                 })
                                                                 // The "default culture" has no dedicated subdirectory, by default
