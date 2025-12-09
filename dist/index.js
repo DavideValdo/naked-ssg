@@ -98,7 +98,7 @@ function readLayout() {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, import(getPath(["layout.jsx"]))];
+                    return [4 /*yield*/, import(getPath(["layout.js"]))];
                 case 1:
                     Layout = (_a.sent()).Layout;
                     return [2 /*return*/, Layout];
@@ -134,7 +134,7 @@ function makeFileBuilder(_a) {
                                             config = _f.sent();
                                             destinationFileName = slugRecord
                                                 ? slugRecord.slug + ".html"
-                                                : templateName.replace(".jsx", ".html");
+                                                : templateName.replace(".js", ".html");
                                             // Skip a culture, if specified
                                             if ((_d = config === null || config === void 0 ? void 0 : config.skipForCultures) === null || _d === void 0 ? void 0 : _d.includes(cultureCode))
                                                 return [2 /*return*/, false];
@@ -214,7 +214,7 @@ function buildSite() {
                                                 case 0: return [4 /*yield*/, makeFileBuilder({
                                                         layout: Layout,
                                                         sourcePath: getPath([PROXIES_FOLDER]),
-                                                        templateName: templateName + ".jsx",
+                                                        templateName: templateName + ".js",
                                                         currentDirectory: directory,
                                                     })];
                                                 case 1:

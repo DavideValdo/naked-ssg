@@ -54,7 +54,7 @@ async function readConfig() {
 
 async function readLayout() {
   try {
-    const { Layout } = await import(getPath(["layout.jsx"]))
+    const { Layout } = await import(getPath(["layout.js"]))
     return Layout as LayoutFunction
   } catch (e) {
     console.error("[naked] Can't read layout")
@@ -81,7 +81,7 @@ async function makeFileBuilder({
 
     const destinationFileName = slugRecord
       ? slugRecord.slug + ".html"
-      : templateName.replace(".jsx", ".html")
+      : templateName.replace(".js", ".html")
     // Skip a culture, if specified
     if (config?.skipForCultures?.includes(cultureCode)) return false
 
@@ -152,7 +152,7 @@ async function buildSite() {
         const buildFile = await makeFileBuilder({
           layout: Layout,
           sourcePath: getPath([PROXIES_FOLDER]),
-          templateName: templateName + ".jsx",
+          templateName: templateName + ".js",
           currentDirectory: directory,
         })
 
