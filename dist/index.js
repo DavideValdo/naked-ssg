@@ -45,7 +45,7 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 import { exec } from "child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { cp, readdir as readDirectory, writeFile } from "fs/promises";
 import { join } from "path";
 import { cwd } from "process";
@@ -392,19 +392,14 @@ function buildSite() {
             initialize: function () {
                 exec("npm init -y && npm i --save-dev typescript @kitajs/html @kitajs/ts-html-plugin @millino/types-naked-ssg && npx tsc --init --outDir ./".concat(TYPESCRIPT_BUILD_FOLDER_NAME), function (error, stdout, stderr) {
                     if (error) {
-                        console.error("[naked] There was an error initializing your project.", error);
+                        console.error("[naked] There was an error initializing your project.", stderr);
                         return;
                     }
                     console.log(stdout);
-                    try {
-                        var TSConfigPath = join(cwd(), "tsconfig.json");
-                        var TSConfigFile = readFileSync(TSConfigPath, "utf8");
-                        var updatedTSConfig = TSConfigFile.replace(/"compilerOptions":\s*\{/, "\"compilerOptions\": {\n    \"jsx\": \"react-jsx\",\n    \"jsxImportSource\": \"@kitajs/html\",\n    \"plugins\": [{ \"name\": \"@kitajs/ts-html-plugin\" }],");
-                        writeFileSync(TSConfigPath, updatedTSConfig);
-                    }
-                    catch (e) {
-                        console.error("[naked] Error updating tsconfig.json", e);
-                    }
+                    cp(getPath(["defaults", "tsconfig.json"]), getPath(["tsconfig.json"])).then(function () {
+                        console.log("[naked] tsconfig.json copied.");
+                        console.log("[naked] Project initialized successfully.");
+                    });
                 });
             },
         };

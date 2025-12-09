@@ -1,0 +1,19 @@
+// This is a default tsconfig.json file for naked-ssg projects.
+// You can modify it as you please.
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@kitajs/html",
+    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],
+    "lib": ["ESNext"],
+    "types": ["node"],
+    "outDir": "./dist",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    "strict": true,
+  }
+}

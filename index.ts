@@ -6,7 +6,7 @@ import {
   SlugRecord,
 } from "@millino/types-naked-ssg"
 import { exec } from "child_process"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
+import { existsSync, mkdirSync } from "fs"
 import { cp, readdir as readDirectory, writeFile } from "fs/promises"
 import { join } from "path"
 import { cwd } from "process"
@@ -95,7 +95,7 @@ async function makeFileBuilder({
       cwd(),
       "build",
       isDefaultCulture ? "" : cultureCode.toLowerCase(),
-      currentDirectory
+      currentDirectory,
     )
 
     const destinationFilePath = join(buildPath, destinationFileName)
@@ -116,7 +116,7 @@ async function makeFileBuilder({
           "[naked] Unable to build " +
             destinationFilePath +
             ", there was an error: " +
-            error
+            error,
         )
       }
 
@@ -162,8 +162,8 @@ async function buildSite() {
               cultureCode,
               isDefaultCulture: cultureCode == Config.cultures[0],
               slugRecord,
-            })
-          )
+            }),
+          ),
         )
       }
     }
@@ -179,8 +179,8 @@ async function buildSite() {
         dirs.map((dir) =>
           cp(getPath(["..", dir]), getPath(["..", "build", dir]), {
             recursive: true,
-          })
-        )
+          }),
+        ),
       )
     } catch (e) {
       console.error("[naked] Couldn't copy resources", e)
@@ -231,7 +231,7 @@ async function buildSite() {
           buildFile({
             cultureCode: Config.cultures[0],
             isDefaultCulture: true,
-          })
+          }),
         )
 
         // Also make promises for the remaining cultures
@@ -240,11 +240,11 @@ async function buildSite() {
         }
 
         return pipeline
-      })
+      }),
     )
 
     console.log(
-      "[naked] Building " + (currentDirectory == "" ? "/" : currentDirectory)
+      "[naked] Building " + (currentDirectory == "" ? "/" : currentDirectory),
     )
 
     await Promise.all(tasks)
@@ -266,7 +266,7 @@ async function buildSite() {
         if (error) {
           console.error(
             "[naked] There was a TypeScript error building your project.",
-            error
+            error,
           )
           return
         }
@@ -281,7 +281,7 @@ async function buildSite() {
           if (error) {
             console.error(
               "[naked] There was an error initializing your project.",
-              error
+              stderr,
             )
 
             return
@@ -289,23 +289,14 @@ async function buildSite() {
 
           console.log(stdout)
 
-          try {
-            const TSConfigPath = join(cwd(), "tsconfig.json")
-            const TSConfigFile = readFileSync(TSConfigPath, "utf8")
-
-            const updatedTSConfig = TSConfigFile.replace(
-              /"compilerOptions":\s*\{/,
-              `"compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "@kitajs/html",
-    "plugins": [{ "name": "@kitajs/ts-html-plugin" }],`
-            )
-
-            writeFileSync(TSConfigPath, updatedTSConfig)
-          } catch (e) {
-            console.error("[naked] Error updating tsconfig.json", e)
-          }
-        }
+          cp(
+            getPath(["defaults", "tsconfig.json"]),
+            getPath(["tsconfig.json"]),
+          ).then(() => {
+            console.log("[naked] tsconfig.json copied.")
+            console.log("[naked] Project initialized successfully.")
+          })
+        },
       )
     },
   }
